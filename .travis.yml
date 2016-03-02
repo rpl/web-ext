@@ -6,6 +6,7 @@ node_js:
 before_install:
 - npm install -g npm
 script: COVERAGE=y npm test
+after_script: "npm install coveralls@2.11.8 && cat ./coverage/lcov.info | coveralls"
 notifications:
   irc:
     channels:
