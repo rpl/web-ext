@@ -6,6 +6,8 @@ import {describe, it} from 'mocha';
 import {assert} from 'chai';
 import sinon from 'sinon';
 
+import {onlyInstancesOf, WebExtError, RemoteTempInstallNotSupported}
+  from '../../src/errors';
 import run, {
   defaultFirefoxClient, defaultWatcherCreator, defaultReloadStrategy,
   ExtensionRunner,
@@ -86,6 +88,23 @@ describe('run', () => {
     });
   });
 
+  it('suggests --install-to-profile when remote install not supported', () => {
+    const cmd = prepareRun();
+    const firefoxClient = fake(RemoteFirefox.prototype, {
+      // Simulate an older Firefox that will throw this error.
+      installTemporaryAddon:
+        () => Promise.reject(new RemoteTempInstallNotSupported('')),
+    });
+
+    return cmd.run(
+      {}, {firefoxClient: () => Promise.resolve(firefoxClient)})
+      .then(makeSureItFails())
+      .catch(onlyInstancesOf(WebExtError, (error) => {
+        assert.equal(firefoxClient.installTemporaryAddon.called, true);
+        assert.match(error.message, /use --install-to-profile/);
+      }));
+  });
+
   it('passes a custom Firefox binary when specified', () => {
     const firefoxBinary = '/pretend/path/to/Firefox/firefox-bin';
     const cmd = prepareRun();
@@ -108,6 +127,31 @@ describe('run', () => {
       assert.equal(firefox.copyProfile.called, true);
       assert.equal(firefox.copyProfile.firstCall.args[0],
                    firefoxProfile);
+    });
+  });
+
+  it('can install directly to the profile', () => {
+    const cmd = prepareRun();
+    const firefoxClient = fake(RemoteFirefox.prototype, {
+      installTemporaryAddon: () => Promise.resolve(),
+    });
+    const fakeProfile = {};
+    const firefox = getFakeFirefox({
+      copyProfile: () => fakeProfile,
+    });
+
+    return cmd.run({installToProfile: true}, {
+      firefox,
+      firefoxClient: sinon.spy(() => Promise.resolve(firefoxClient)),
+    }).then(() => {
+      assert.equal(firefox.installExtension.called, true);
+      assert.equal(firefoxClient.installTemporaryAddon.called, false);
+
+      const install = firefox.installExtension.firstCall.args[0];
+      assert.equal(install.manifestData.applications.gecko.id,
+                   'minimal-example@web-ext-test-suite');
+      assert.deepEqual(install.profile, fakeProfile);
+      assert.match(install.extensionPath, /minimal_extension-1.0\.xpi$/);
     });
   });
 

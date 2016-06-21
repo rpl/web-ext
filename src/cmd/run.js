@@ -1,8 +1,13 @@
 /* @flow */
 import * as defaultFirefox from '../firefox';
+import buildExtension from '../cmd/build';
 import defaultFirefoxConnector from '../firefox/remote';
-import {onlyErrorsWithCode} from '../errors';
+import {
+  onlyInstancesOf, onlyErrorsWithCode, RemoteTempInstallNotSupported,
+  WebExtError,
+} from '../errors';
 import {createLogger} from '../util/logger';
+import {TempDir} from '../util/temp-dir';
 import getValidatedManifest from '../util/manifest';
 import defaultSourceWatcher from '../watcher';
 
@@ -83,7 +88,8 @@ export function defaultFirefoxClient(
 
 
 export default function run(
-    {sourceDir, artifactsDir, firefoxBinary, firefoxProfile, noReload}: Object,
+    {sourceDir, artifactsDir, firefoxBinary, firefoxProfile,
+     installToProfile=false, noReload=false}: Object,
     {firefoxClient=defaultFirefoxClient, firefox=defaultFirefox,
      reloadStrategy=defaultReloadStrategy}
     : Object = {}): Promise {
@@ -103,11 +109,29 @@ export default function run(
       });
   }
 
+  let installed = false;
   return createRunner()
     .then((runner) => {
       return runner.getProfile().then((profile) => {
         return {runner, profile};
       });
+    })
+    .then((config) => {
+      const {runner, profile} = config;
+      return new Promise(
+        (resolve) => {
+          if (!installToProfile) {
+            log.debug('Deferring add-on installation until after connecting ' +
+                      'to the remote debugger');
+            resolve();
+          } else {
+            log.debug('Installing add-on directly to the profile');
+            resolve(runner.buildAndInstall(profile).then(() => {
+              installed = true;
+            }));
+          }
+        })
+        .then(() => config);
     })
     .then(({runner, profile}) => {
       return runner.run(profile).then((firefox) => {
@@ -120,11 +144,26 @@ export default function run(
       });
     })
     .then((config) => {
-      const {runner, client} = config;
-      return runner.install(client).then(() => {
-        return config;
-      });
+      return new Promise(
+        (resolve) => {
+          const {runner, client} = config;
+          if (installed) {
+            log.debug('Not installing as temporary add-on because the ' +
+                      'add-on was already installed');
+            resolve();
+          } else {
+            resolve(runner.installAsTemporaryAddon(client));
+          }
+        })
+        .then(() => config);
     })
+    .catch(onlyInstancesOf(RemoteTempInstallNotSupported, (error) => {
+      log.debug(`Caught: ${error}`);
+      throw new WebExtError(
+        'Temporary add-on installation is not supported in this version ' +
+        'of Firefox (you need Firefox 49 or higher). For older Firefox ' +
+        'versions, use --install-to-profile');
+    }))
     .then(({firefox, profile, client}) => {
       if (noReload) {
         log.debug('Extension auto-reloading has been disabled');
@@ -167,8 +206,23 @@ export class ExtensionRunner {
     });
   }
 
-  install(client: Object): Promise {
+  installAsTemporaryAddon(client: Object): Promise {
     return client.installTemporaryAddon(this.sourceDir);
+  }
+
+  buildAndInstall(profile: Object): Promise {
+    const {firefox, sourceDir, manifestData} = this;
+    const tmpDir = new TempDir();
+    // TODO: Remove this temp directory when the program exits.
+    // See https://github.com/mozilla/web-ext/issues/239
+    return tmpDir.create()
+      .then(() => buildExtension({sourceDir, artifactsDir: tmpDir.path()},
+                                 {manifestData}))
+      .then((buildResult) => firefox.installExtension({
+        manifestData,
+        extensionPath: buildResult.extensionPath,
+        profile,
+      }));
   }
 
   run(profile: Object): Promise {

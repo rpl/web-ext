@@ -196,7 +196,14 @@ Example: $0 --help run.
         type: 'string',
       },
       'no-reload': {
-        describe: 'Do not reload the extension as the source changes',
+        describe: 'Do not reload the extension when source files change',
+        demand: false,
+        type: 'boolean',
+      },
+      'install-to-profile': {
+        describe: 'Install the add-on directly to the profile. ' +
+                  'This is only needed to support older versions of Firefox.',
+        demand: false,
         type: 'boolean',
       },
     });
