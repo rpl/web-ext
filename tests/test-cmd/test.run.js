@@ -151,7 +151,9 @@ describe('run', () => {
       assert.equal(install.manifestData.applications.gecko.id,
                    'minimal-example@web-ext-test-suite');
       assert.deepEqual(install.profile, fakeProfile);
-      assert.match(install.extensionPath, /minimal_extension-1.0\.xpi$/);
+
+      assert.equal(install.asShadowInstall, true);
+      assert.match(install.sourceDir, /fixtures\/minimal-web-ext$/);
     });
   });
 

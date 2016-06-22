@@ -126,7 +126,9 @@ export default function run(
             resolve();
           } else {
             log.debug('Installing add-on directly to the profile');
-            resolve(runner.buildAndInstall(profile).then(() => {
+            // Use "Shadow Install" as a fallback on missing addon reload feature
+            // in the Remote Debugger Server.
+            resolve(runner.installAsTextFileInProfile(profile).then(() => {
               installed = true;
             }));
           }
@@ -208,6 +210,16 @@ export class ExtensionRunner {
 
   installAsTemporaryAddon(client: Object): Promise {
     return client.installTemporaryAddon(this.sourceDir);
+  }
+
+  installAsTextFileInProfile(profile: Object): Promise {
+    const {firefox, sourceDir, manifestData} = this;
+    return firefox.installExtension({
+      manifestData,
+      asShadowInstall: true,
+      sourceDir,
+      profile,
+    });
   }
 
   buildAndInstall(profile: Object): Promise {

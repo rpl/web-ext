@@ -197,7 +197,8 @@ export function copyProfile(
  * ./preferences.js.
  */
 export function installExtension(
-    {manifestData, profile, extensionPath}: Object): Promise {
+  {manifestData, profile, extensionPath,
+   sourceDir, asShadowInstall}: Object): Promise {
 
   // This more or less follows
   // https://github.com/saadtazi/firefox-profile-js/blob/master/lib/firefox_profile.js#L531
@@ -216,21 +217,35 @@ export function installExtension(
       return fs.mkdir(profile.extensionsDir);
     }))
     .then(() => {
-      let readStream = nodeFs.createReadStream(extensionPath);
       let id = manifestData.applications.gecko.id;
 
-      // TODO: also support copying a directory of code to this
-      // destination. That is, to name the directory ${id}.
-      // https://github.com/mozilla/web-ext/issues/70
-      let destPath = path.join(profile.extensionsDir, `${id}.xpi`);
-      let writeStream = nodeFs.createWriteStream(destPath);
+      if (asShadowInstall) {
+        // Install by creating a text file with the full path to the
+        // extension source dir.
+        let destPath = path.join(profile.extensionsDir, `${id}`);
+        let writeStream = nodeFs.createWriteStream(destPath);
 
-      log.debug(`Copying ${extensionPath} to ${destPath}`);
-      readStream.pipe(writeStream);
+        log.debug(`Shadow install ${sourceDir} to ${destPath}`);
 
-      return Promise.all([
-        streamToPromise(readStream),
-        streamToPromise(writeStream),
-      ]);
+        writeStream.write(sourceDir);
+        writeStream.end();
+
+        return streamToPromise(writeStream);
+      } else {
+        let readStream = nodeFs.createReadStream(extensionPath);
+        // TODO: also support copying a directory of code to this
+        // destination. That is, to name the directory ${id}.
+        // https://github.com/mozilla/web-ext/issues/70
+        let destPath = path.join(profile.extensionsDir, `${id}.xpi`);
+        let writeStream = nodeFs.createWriteStream(destPath);
+
+        log.debug(`Copying ${extensionPath} to ${destPath}`);
+        readStream.pipe(writeStream);
+
+        return Promise.all([
+          streamToPromise(readStream),
+          streamToPromise(writeStream),
+        ]);
+      }
     });
 }
