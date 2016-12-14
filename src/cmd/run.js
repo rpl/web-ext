@@ -9,6 +9,7 @@ import {
 import {createLogger} from '../util/logger';
 import getValidatedManifest, {getManifestId} from '../util/manifest';
 import defaultSourceWatcher from '../watcher';
+import {NotificationCenter as NC} from 'node-notifier';
 
 
 const log = createLogger(__filename);
@@ -51,9 +52,20 @@ export function defaultWatcherCreator(
     artifactsDir,
     onChange: () => {
       log.debug(`Reloading add-on ID ${addonId}`);
+      var notifier = new NC({
+        withFallback: true,
+      });
+      notifier.notify({
+        title: 'Started reloading',
+        message: `Reloading add-on ID ${addonId}`,
+      });
       return client.reloadAddon(addonId)
         .catch((error) => {
           log.error(error.stack);
+          notifier.notify({
+            title: 'Error occured',
+            message: error.message,
+          });
           throw error;
         });
     },
