@@ -11,13 +11,19 @@ before_script:
 script:
 - COVERAGE=y NODE_ENV=production npm test
 - npm run travis-pullrequest-title-lint
+- |
+  COMMIT_COUNT=`git rev-list --count HEAD ^0d636c42d`
+  if [[ $COMMIT_COUNT -eq 1 ]]; then
+    echo "Lint the commit message on a 'single commit' pull request"
+    git show -s --format=%B HEAD | ./node_modules/.bin/conventional-changelog-lint
+  fi
 
 after_script: npm run publish-coverage
 
 notifications:
   irc:
     channels:
-    - irc.mozilla.org#amo-bots
+    #- irc.mozilla.org#amo-bots
     on_success: change
     on_failure: always
 deploy:
