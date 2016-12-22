@@ -10,6 +10,14 @@ before_script:
 
 script:
 - COVERAGE=y NODE_ENV=production npm test
+- |
+  echo <<-EOM
+    Starting changelog linting, please take a look at
+
+    - https://github.com/mozilla/web-ext/blob/master/CONTRIBUTING.md#writing-commit-messages
+
+    and mention in a comment one of the mantainers if the travis build is failing here.
+  EOM
 - npm run travis-pullrequest-title-lint
 - |
   COMMIT_COUNT=`git rev-list --count HEAD ^0d636c42d`
