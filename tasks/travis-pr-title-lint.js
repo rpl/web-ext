@@ -70,7 +70,7 @@ module.exports = function(grunt) {
     });
   }
 
-  function getPullRequestTitle() {
+  function getPullRequestTitle(opts) {
     return new Promise(function(resolve, reject) {
       var pullRequestURLPath = '/repos/' +
         process.env.TRAVIS_REPO_SLUG + '/pulls/' +
@@ -102,7 +102,7 @@ module.exports = function(grunt) {
         response.on('end', function() {
           try {
             var prData = JSON.parse(body);
-            if (process.env.VERBOSE === 'true') {
+            if (process.env.VERBOSE === 'true' || (opts && opts.verbose)) {
               console.log('DEBUG getPullRequestTitle:',
                           JSON.stringify(prData, null, 2));
             }
@@ -190,7 +190,7 @@ module.exports = function(grunt) {
                       'Retrying one more time...'
                     );
 
-                    return getPullRequestTitle();
+                    return getPullRequestTitle({verbose: true});
                   }
 
                   return pullRequestTitle;
