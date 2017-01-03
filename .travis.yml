@@ -15,11 +15,12 @@ script:
 after_script: npm run publish-coverage
 
 notifications:
-  irc:
-    channels:
-    - irc.mozilla.org#amo-bots
-    on_success: change
-    on_failure: always
+# TMP do not send any irc message during this annoying test
+#  irc:
+#    channels:
+#    - irc.mozilla.org#amo-bots
+#    on_success: change
+#    on_failure: always
 deploy:
   provider: npm
   email: addons-dev-automation+npm@mozilla.com
