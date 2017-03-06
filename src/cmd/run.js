@@ -295,16 +295,28 @@ export default async function run(
 
       if (stdin.isTTY && stdin instanceof tty.ReadStream) {
         readline.emitKeypressEvents(stdin);
-        log.info('Press R to reload (and Ctrl-C to quit)');
         stdin.setRawMode(true);
-        stdin.on('keypress', (str, key) => {
-          if (key.ctrl && key.name === 'c') {
-            log.info('\nExiting web-ext on user request');
-            runningFirefox.kill();
-            stdin.pause();
-          } else if (key.name === 'r' && addonId) {
-            addonReload({addonId, client});
+
+        Promise.resolve().then(async function() {
+          log.info('Press R to reload (and Ctrl-C to quit)');
+
+          let userExit = false;
+
+          while (!userExit) {
+            const keyPressed = await new Promise((resolve) => {
+              stdin.once('keypress', (str, key) => resolve(key));
+            });
+
+            if (keyPressed.ctrl && keyPressed.name === 'c') {
+              userExit = true;
+            } else if (keyPressed.name === 'r' && addonId) {
+              await addonReload({addonId, client});
+            }
           }
+
+          log.info('\nExiting web-ext on user request');
+          runningFirefox.kill();
+          stdin.pause();
         });
       }
 
