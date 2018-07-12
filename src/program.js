@@ -230,7 +230,7 @@ export class Program {
         log.error(`\n${error}\n`);
       }
       if (error.code) {
-        log.error(`Error code: ${error.code}\n`);
+        log.error(`Error code: ${error.code} ${error.stack}\n`);
       }
 
       log.debug(`Command executed: ${cmd}`);
