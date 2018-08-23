@@ -43,12 +43,12 @@ before_deploy:
 ## Make sure we have a production build.
 - NODE_ENV=production npm run build
 
-notifications:
-  irc:
-    channels:
-    - irc.mozilla.org#amo-bots
-    on_success: change
-    on_failure: always
+# notifications:
+#   irc:
+#     channels:
+#     - irc.mozilla.org#amo-bots
+#     on_success: change
+#     on_failure: always
 deploy:
   provider: npm
   email: addons-dev-automation+npm@mozilla.com
