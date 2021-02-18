@@ -45,9 +45,15 @@ export default function onSourceChange(
     debounceTime = 1000,
   }: OnSourceChangeParams
 ): Watchpack {
+  // When running on windows, trans the ignored paths and globs
+  // as Watchpack does translate the changed files path internally.
+  const ignored = (watchIgnored && process.platform === 'win32')
+    ? watchIgnored.map((it) => it.replace(/\\/, '/'))
+    : watchIgnored;
+
   // TODO: For network disks, we would need to add {poll: true}.
-  const watcher = watchIgnored ?
-    new Watchpack({ignored: watchIgnored}) :
+  const watcher = ignored ?
+    new Watchpack({ignored}) :
     new Watchpack();
 
   const executeImmediately = true;
