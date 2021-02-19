@@ -18,10 +18,12 @@ export type OnChangeFn = () => any;
 
 export type OnSourceChangeParams = {|
   sourceDir: string,
-  watchFile?: string,
+  watchFile?: Array<string>,
+  watchIgnored?: Array<string>,
   artifactsDir: string,
   onChange: OnChangeFn,
   shouldWatchFile: ShouldWatchFn,
+  debounceTime?: number,
 |};
 
 // NOTE: this fix an issue with flow and default exports (which currently
@@ -36,33 +38,41 @@ export default function onSourceChange(
   {
     sourceDir,
     watchFile,
+    watchIgnored,
     artifactsDir,
     onChange,
     shouldWatchFile,
+    debounceTime = 1000,
   }: OnSourceChangeParams
 ): Watchpack {
   // TODO: For network disks, we would need to add {poll: true}.
-  const watcher = new Watchpack();
+  const watcher = watchIgnored ?
+    new Watchpack({ignored: watchIgnored}) :
+    new Watchpack();
 
   const executeImmediately = true;
-  onChange = debounce(onChange, 1000, executeImmediately);
+  onChange = debounce(onChange, debounceTime, executeImmediately);
 
   watcher.on('change', (filePath) => {
     proxyFileChanges({artifactsDir, onChange, filePath, shouldWatchFile});
   });
 
-  log.debug(`Watching for file changes in ${watchFile || sourceDir}`);
+  log.debug(
+    `Watching ${watchFile ? watchFile.join(',') : sourceDir} for changes`
+  );
 
   const watchedDirs = [];
   const watchedFiles = [];
 
   if (watchFile) {
-    if (fs.existsSync(watchFile) && !fs.lstatSync(watchFile).isFile()) {
-      throw new UsageError('Invalid --watch-file value: ' +
-        `"${watchFile}" is not a file.`);
-    }
+    for (const filePath of watchFile) {
+      if (fs.existsSync(filePath) && !fs.lstatSync(filePath).isFile()) {
+        throw new UsageError('Invalid --watch-file value: ' +
+          `"${filePath}" is not a file.`);
+      }
 
-    watchedFiles.push(watchFile);
+      watchedFiles.push(filePath);
+    }
   } else {
     watchedDirs.push(sourceDir);
   }

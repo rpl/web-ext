@@ -6,6 +6,8 @@ import {readFileSync} from 'fs';
 import camelCase from 'camelcase';
 import decamelize from 'decamelize';
 import yargs from 'yargs';
+// TODO(rpl): try to remove the following suppress comment after updating flow to more recent versions.
+// $FlowFixMe: flow doesn't seem to read yet the `exports` property from the yargs package.json.
 import { Parser as yargsParser } from 'yargs/yargs';
 
 import defaultCommands from './cmd';
@@ -527,7 +529,7 @@ Example: $0 --help run.
         },
         'api-url-prefix': {
           describe: 'Signing API URL prefix',
-          default: 'https://addons.mozilla.org/api/v3',
+          default: 'https://addons.mozilla.org/api/v4',
           demandOption: true,
           type: 'string',
         },
@@ -616,10 +618,19 @@ Example: $0 --help run.
       },
       'watch-file': {
         describe: 'Reload the extension only when the contents of this' +
-                  'file changes. This is useful if you use a custom' +
+                  ' file changes. This is useful if you use a custom' +
                   ' build process for your extension',
         demandOption: false,
-        type: 'string',
+        type: 'array',
+      },
+      'watch-ignored': {
+        describe: 'Paths and globs patterns that should not be ' +
+                  'watched for changes. This is useful if you want ' +
+                  'to explicitly prevent web-ext from watching part ' +
+                  'of the extension directory tree, ' +
+                  'e.g. the node_modules folder.',
+        demandOption: false,
+        type: 'array',
       },
       'pre-install': {
         describe: 'Pre-install the extension into the profile before ' +

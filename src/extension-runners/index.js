@@ -152,7 +152,7 @@ export class MultiExtensionRunner {
   ): Promise<Array<ExtensionRunnerReloadResult>> {
     log.debug(`Reloading add-on at ${sourceDir}`);
 
-    const promises = [];
+    const promises: Array<Promise<ExtensionRunnerReloadResult>> = [];
     for (const runner of this.extensionRunners) {
       const reloadPromise = runner.reloadExtensionBySourceDir(sourceDir).then(
         () => {
@@ -170,7 +170,6 @@ export class MultiExtensionRunner {
       promises.push(reloadPromise);
     }
 
-    // $FlowFixMe: When upgrading to Flow 0.61.0, it could not follow the type of sourceDir in the array of promises.
     return await Promise.all(promises).then((results) => {
       this.handleReloadResults(results);
       return results;
@@ -239,7 +238,8 @@ export class MultiExtensionRunner {
 export type WatcherCreatorParams = {|
   reloadExtension: (string) => void,
   sourceDir: string,
-  watchFile?: string,
+  watchFile?: Array<string>,
+  watchIgnored?: Array<string>,
   artifactsDir: string,
   onSourceChange?: OnSourceChangeFn,
   ignoreFiles?: Array<string>,
@@ -250,7 +250,8 @@ export type WatcherCreatorFn = (params: WatcherCreatorParams) => Watchpack;
 
 export function defaultWatcherCreator(
   {
-    reloadExtension, sourceDir, watchFile, artifactsDir, ignoreFiles,
+    reloadExtension, sourceDir, watchFile,
+    watchIgnored, artifactsDir, ignoreFiles,
     onSourceChange = defaultSourceWatcher,
     createFileFilter = defaultFileFilterCreator,
   }: WatcherCreatorParams
@@ -261,6 +262,7 @@ export function defaultWatcherCreator(
   return onSourceChange({
     sourceDir,
     watchFile,
+    watchIgnored,
     artifactsDir,
     onChange: () => reloadExtension(sourceDir),
     shouldWatchFile: (file) => fileFilter.wantFile(file),
@@ -273,7 +275,8 @@ export function defaultWatcherCreator(
 export type ReloadStrategyParams = {|
   extensionRunner: IExtensionRunner,
   sourceDir: string,
-  watchFile?: string,
+  watchFile?: Array<string>,
+  watchIgnored?: Array<string>,
   artifactsDir: string,
   ignoreFiles?: Array<string>,
   noInput?: boolean,
@@ -293,6 +296,7 @@ export function defaultReloadStrategy(
     noInput = false,
     sourceDir,
     watchFile,
+    watchIgnored,
   }: ReloadStrategyParams,
   {
     createWatcher = defaultWatcherCreator,
@@ -311,6 +315,7 @@ export function defaultReloadStrategy(
     },
     sourceDir,
     watchFile,
+    watchIgnored,
     artifactsDir,
     ignoreFiles,
   });

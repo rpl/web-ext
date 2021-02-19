@@ -543,15 +543,13 @@ describe('program.main', () => {
       });
   });
 
-  it('calls run with a watched file', () => {
-    const watchFile = 'path/to/fake/file.txt';
-
+  async function testWatchFileOption(watchFile) {
     const fakeCommands = fake(commands, {
       run: () => Promise.resolve(),
     });
 
     return execProgram(
-      ['run', '--watch-file', watchFile],
+      ['run', '--watch-file', ...watchFile],
       {commands: fakeCommands})
       .then(() => {
         sinon.assert.calledWithMatch(
@@ -559,6 +557,42 @@ describe('program.main', () => {
           {watchFile}
         );
       });
+  }
+
+  it('calls run with a watched file', () => {
+    testWatchFileOption(['path/to/fake/file.txt']);
+  });
+
+  it('calls run with multiple watched files', () => {
+    testWatchFileOption(
+      ['path/to/fake/file.txt', 'path/to/fake/file2.txt']
+    );
+  });
+
+  async function testWatchIgnoredOption(watchIgnored) {
+    const fakeCommands = fake(commands, {
+      run: () => Promise.resolve(),
+    });
+
+    await execProgram(
+      ['run', '--watch-ignored', ...watchIgnored],
+      {commands: fakeCommands});
+
+    sinon.assert.calledWithMatch(
+      execProgram,
+      fakeCommands.run,
+      {watchIgnored}
+    );
+  }
+
+  it('calls run with a single watchIgnored pattern', () => {
+    testWatchIgnoredOption(['path/to/fake/file1.txt']);
+  });
+
+  it('calls run with a multiple watchIgnored patterns', () => {
+    testWatchIgnoredOption(
+      ['path/to/fake/file1.txt', 'path/to/fake/pattern*']
+    );
   });
 
   it('converts custom preferences into an object', () => {
@@ -885,10 +919,15 @@ describe('program.defaultVersionGetter', () => {
   });
 
   it('returns git commit information in development', function() {
-    const commit = `${git.branch()}-${git.long()}`;
-    const testBuildEnv = {globalEnv: 'development'};
-    assert.equal(defaultVersionGetter(projectRoot, testBuildEnv),
-                 commit);
+    return fs.exists(path.join(projectRoot, '.git')).then((exists) => {
+      if (!exists) {
+        this.skip();
+      }
+      const commit = `${git.branch()}-${git.long()}`;
+      const testBuildEnv = {globalEnv: 'development'};
+      assert.equal(defaultVersionGetter(projectRoot, testBuildEnv),
+                   commit);
+    });
   });
 });
 
